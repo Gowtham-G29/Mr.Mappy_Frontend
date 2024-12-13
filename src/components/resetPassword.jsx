@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useParams } from "react-router-dom"; // Import the useParams hook
 import NavBar from "../components/NavBar";
 import Footer from "../components/Footer";
-import { resetPassword } from "../services/api";
+import { resetPassword } from "../services/Api";
 
 function ResetPassword() {
   const { token } = useParams(); // Extract the token from the URL
