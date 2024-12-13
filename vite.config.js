@@ -1,7 +1,6 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 
-// https://vitejs.dev/config/
 export default defineConfig({
   plugins: [react()],
   resolve: {
@@ -10,14 +9,23 @@ export default defineConfig({
     },
   },
   build: {
-    outDir: 'dist', // This specifies the output directory for build files
-    base: '/', // This specifies the base public path for the application
+    outDir: 'dist', // Ensure this points to the correct output directory
+    base: '/', // Base public path for the application
   },
   rollupOptions: {
     output: {
       manualChunks(id) {
         if (id.includes('node_modules')) {
-          return 'vendor';  // Create a separate chunk for node_modules
+          return 'vendor';  // Creates a separate chunk for node_modules
+        }
+        
+        // Example of further chunk splitting, adjust based on your code structure
+        if (id.includes('src/components/')) {
+          return 'components'; // Creates a separate chunk for components
+        }
+
+        if (id.includes('src/pages/')) {
+          return 'pages'; // Creates a separate chunk for pages
         }
       },
     },
