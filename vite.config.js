@@ -1,27 +1,26 @@
-import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
-
+import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react';
 
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [react()],
   resolve: {
     alias: {
-      '@services': '/src/services'
-    }
+      '@services': '/src/services', // Alias for your services
+    },
   },
   build: {
-    outDir: 'dist', // This should point to the correct directory
-  }, rollupOptions: {
+    outDir: 'dist', // This specifies the output directory for build files
+    base: '/', // This specifies the base public path for the application
+  },
+  rollupOptions: {
     output: {
       manualChunks(id) {
         if (id.includes('node_modules')) {
-          return 'vendor';  // Creates a separate 'vendor' chunk for node_modules
+          return 'vendor';  // Create a separate chunk for node_modules
         }
       },
     },
   },
-  chunkSizeWarningLimit: 1000, // Increases the warning limit to 1000 KB (1 MB)
-
-})
-
+  chunkSizeWarningLimit: 1000, // Increases the warning limit for chunk size to 1000 KB (1MB)
+});
