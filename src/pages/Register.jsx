@@ -1,14 +1,14 @@
 import { useState } from "react";
-import { storeUserData } from "../services/Storage";
 import { Link, useNavigate } from "react-router-dom";
 import NavBar from "../components/NavBar";
 import Footer from "../components/Footer";
-import { RegisterApi } from "../services/api";
+import { signup } from "../services/api";
 
 function Register() {
   const initialState = {
-    email: { required: false },
-    password: { required: false },
+    email: { required: false, invalid: false },
+    password: { required: false, weak: false },
+    passwordConfirm: { required: false, mismatch: false },
     name: { required: false },
     custom_error: null,
   };
@@ -16,60 +16,95 @@ function Register() {
   const [errors, setErrors] = useState(initialState);
   const [loading, setLoading] = useState(false);
   const [inputs, setInputs] = useState({
-    email: "",
     name: "",
+    email: "",
     password: "",
+    passwordConfirm: "",
   });
 
-  // useNavigate hook to programmatically navigate to login after registration
   const navigate = useNavigate();
 
-  const handleSubmit = (event) => {
+  const validateEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+
+  const validatePasswordStrength = (password) => password.length >= 6;
+
+  const handleSubmit = async (event) => {
     event.preventDefault();
-    let errors = initialState;
+
+    // Reset errors before validation
+    let validationErrors = { ...initialState };
     let hasError = false;
 
-    if (inputs.name === "") {
-      errors.name.required = true;
+    // Validate inputs
+    if (!inputs.name) {
+      validationErrors.name.required = true;
       hasError = true;
     }
-    if (inputs.email === "") {
-      errors.email.required = true;
+    if (!inputs.email) {
+      validationErrors.email.required = true;
+      hasError = true;
+    } else if (!validateEmail(inputs.email)) {
+      validationErrors.email.invalid = true;
       hasError = true;
     }
-    if (inputs.password === "") {
-      errors.password.required = true;
+    if (!inputs.password) {
+      validationErrors.password.required = true;
+      hasError = true;
+    } else if (!validatePasswordStrength(inputs.password)) {
+      validationErrors.password.weak = true;
+      hasError = true;
+    }
+    if (!inputs.passwordConfirm) {
+      validationErrors.passwordConfirm.required = true;
+      hasError = true;
+    } else if (inputs.password !== inputs.passwordConfirm) {
+      validationErrors.passwordConfirm.mismatch = true;
       hasError = true;
     }
 
-    if (!hasError) {
-      setLoading(true);
-      RegisterApi(inputs)
-        .then((response) => {
-          storeUserData(response.data.idToken);
-          // Navigate to login page after successful registration
-          navigate("/login");
-        })
-        .catch((err) => {
-          if (err.response.data.error === "Email already exists") {
-            setErrors({
-              ...errors,
-              custom_error: "This email has already been registered!",
-            });
-          } else if (
-            String(err.response.data.error.message).includes("WEAK_PASSWORD")
-          ) {
-            setErrors({
-              ...errors,
-              custom_error: "Password should be at least 6 characters!",
-            });
-          }
-        })
-        .finally(() => {
-          setLoading(false);
-        });
+    // If validation fails, set errors and stop submission
+    if (hasError) {
+      setErrors(validationErrors);
+      return;
     }
-    setErrors({ ...errors });
+
+    // Proceed with registration if no errors
+    setLoading(true);
+    try {
+      const response = await signup({
+        name: inputs.name,
+        email: inputs.email,
+        password: inputs.password,
+        passwordConfirm: inputs.passwordConfirm,
+      });
+      if (response.data.token) navigate("/login"); // Redirect to login after successful registration
+    } catch (err) {
+      setLoading(false);
+
+      // Default to a generic error message
+      let customError = "An unexpected error occurred. Please try again later.";
+
+      if (err.response) {
+        const serverError = err.response.data?.message || customError;
+
+        if (serverError === "User Already Registered") {
+          customError = "This email is already registered.";
+        } else if (serverError.includes("WEAK_PASSWORD")) {
+          customError = "Password should be at least 6 characters.";
+        } else {
+          customError = serverError;
+        }
+      } else if (err.request) {
+        customError = "Network error. Please check your connection.";
+      } else {
+        customError = "An unexpected error occurred. Please try again later.";
+      }
+
+      setErrors({
+        ...validationErrors,
+        custom_error: customError,
+      });
+    }
   };
 
   const handleInput = (event) => {
@@ -100,6 +135,7 @@ function Register() {
                     name="name"
                     id="name"
                     onChange={handleInput}
+                    disabled={loading}
                   />
                   {errors.name.required && (
                     <span className="text-red-500 text-sm">
@@ -107,6 +143,7 @@ function Register() {
                     </span>
                   )}
                 </div>
+
                 <div className="form-group mb-4">
                   <label
                     htmlFor="email"
@@ -120,13 +157,20 @@ function Register() {
                     name="email"
                     id="email"
                     onChange={handleInput}
+                    disabled={loading}
                   />
                   {errors.email.required && (
                     <span className="text-red-500 text-sm">
                       Email is required.
                     </span>
                   )}
+                  {errors.email.invalid && (
+                    <span className="text-red-500 text-sm">
+                      Enter a valid email address.
+                    </span>
+                  )}
                 </div>
+
                 <div className="form-group mb-4">
                   <label
                     htmlFor="password"
@@ -140,10 +184,43 @@ function Register() {
                     name="password"
                     id="password"
                     onChange={handleInput}
+                    disabled={loading}
                   />
                   {errors.password.required && (
                     <span className="text-red-500 text-sm">
                       Password is required.
+                    </span>
+                  )}
+                  {errors.password.weak && (
+                    <span className="text-red-500 text-sm">
+                      Password should be at least 6 characters.
+                    </span>
+                  )}
+                </div>
+
+                <div className="form-group mb-4">
+                  <label
+                    htmlFor="passwordConfirm"
+                    className="block text-gray-700 font-semibold"
+                  >
+                    Confirm Password
+                  </label>
+                  <input
+                    type="password"
+                    className="form-control w-full p-2 border border-gray-300 rounded mt-1"
+                    name="passwordConfirm"
+                    id="passwordConfirm"
+                    onChange={handleInput}
+                    disabled={loading}
+                  />
+                  {errors.passwordConfirm.required && (
+                    <span className="text-red-500 text-sm">
+                      Confirm Password is required.
+                    </span>
+                  )}
+                  {errors.passwordConfirm.mismatch && (
+                    <span className="text-red-500 text-sm">
+                      Passwords do not match.
                     </span>
                   )}
                 </div>
@@ -168,7 +245,7 @@ function Register() {
                 />
 
                 <div className="text-center text-sm mt-4">
-                  Already have an account?
+                  Already have an account?{" "}
                   <Link to="/login" className="text-blue-500">
                     Login
                   </Link>

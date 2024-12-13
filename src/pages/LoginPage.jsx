@@ -1,12 +1,11 @@
 import { useState } from "react";
-import { storeUserData } from "../services/Storage";
-import { isAuthenticated } from "../services/Auth";
-import { Link,  useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import NavBar from "../components/NavBar";
 import Footer from "../components/Footer";
-import { LoginApi } from "../services/api";
+import { Login } from "../services/api";
 
 function LoginPage() {
+  
   const initialState = {
     email: { required: false },
     password: { required: false },
@@ -19,56 +18,66 @@ function LoginPage() {
     email: "",
     password: "",
   });
-  
-  const navigate = useNavigate();  // Use the navigate hook to programmatically navigate
 
-  const handleSubmit = (event) => {
+  const navigate = useNavigate();
+
+  const handleSubmit = async (event) => {
     event.preventDefault();
-    let errors = initialState;
+
+    // Reset errors before validation
+    let validationErrors = { ...initialState };
     let hasError = false;
 
-    // Validate input fields
-    if (inputs.email === "") {
-      errors.email.required = true;
+    // Validate inputs
+    if (!inputs.email) {
+      validationErrors.email.required = true;
       hasError = true;
     }
-    if (inputs.password === "") {
-      errors.password.required = true;
+    if (!inputs.password) {
+      validationErrors.password.required = true;
       hasError = true;
     }
 
-
-    if (!hasError) {
-      setLoading(true);
-      // Call the Login API
-      LoginApi(inputs)
-        .then((response) => {
-          // Store token and userId upon successful login
-          storeUserData(response.data.token);
-          localStorage.setItem('userId', response.data.userId);
-          
-          // After successful login and data storage, navigate to dashboard
-          if (isAuthenticated()) {
-            navigate('/dashboard');  // Navigate to dashboard
-          }
-        })
-        .catch((err) => {
-          if (err.code === "ERR_BAD_REQUEST") {
-            setErrors({
-              ...errors,
-              custom_error: "Invalid Credentials.",
-            });
-          }
-        })
-        .finally(() => {
-          setLoading(false);
-        });
+    // Set errors if validation fails
+    if (hasError) {
+      setErrors(validationErrors);
+      return;
     }
-    setErrors({ ...errors });
+
+    // Proceed with login if no errors
+    setLoading(true);
+    try {
+      const response = await Login({
+        email: inputs.email,
+        password: inputs.password,
+      });
+      setLoading(false);
+
+      // Handle successful login
+      if (response.data.token) {
+        localStorage.clear();
+        localStorage.setItem("jwt", response.data.token);
+        navigate("/dashboard");
+      }
+    } catch (err) {
+      setLoading(false);
+      const serverError = err.response?.data?.message || "An unexpected error occurred.";
+      let customError = null;
+
+      if (serverError === "Invalid password") {
+        customError = "Invalid password.";
+      } else if (serverError === "User Not Found") {
+        customError = "Invalid Email! User Not Found.";
+      } else {
+        customError = "An error occurred. Please try again.";
+      }
+
+      setErrors({
+        ...validationErrors,
+        custom_error: customError,
+      });
+    }
   };
-
-
-
 
   const handleInput = (event) => {
     setInputs({ ...inputs, [event.target.name]: event.target.value });
@@ -81,20 +90,27 @@ function LoginPage() {
         <div className="container mx-auto px-4">
           <div className="flex justify-center">
             <div className="w-full max-w-md bg-slate-200 p-8 rounded-lg shadow-md">
-              <h2 className="text-2xl font-bold text-center mb-6">
-                Login Now
-              </h2>
+              <h2 className="text-2xl font-bold text-center mb-6">Login Now</h2>
               <form onSubmit={handleSubmit} className="login-form">
                 <div className="mb-4">
-                  <label htmlFor="email" className="block text-sm font-bold mb-2">
+                  <label
+                    htmlFor="email"
+                    className="block text-sm font-bold mb-2"
+                  >
                     Email
                   </label>
                   <input
                     type="email"
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     name="email"
-                    placeholder="email"
+                    placeholder="Email"
+                    value={inputs.email}
                     onChange={handleInput}
+                    disabled={loading}
+                    className={`w-full px-4 py-2 border ${
+                      errors.email.required
+                        ? "border-red-500"
+                        : "border-gray-300"
+                    } rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500`}
                   />
                   {errors.email.required && (
                     <span className="text-red-500 text-sm">
@@ -102,47 +118,64 @@ function LoginPage() {
                     </span>
                   )}
                 </div>
+
                 <div className="mb-4">
-                  <label htmlFor="password" className="block text-sm font-bold mb-2">
+                  <label
+                    htmlFor="password"
+                    className="block text-sm font-bold mb-2"
+                  >
                     Password
                   </label>
                   <input
                     type="password"
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     name="password"
-                    placeholder="password"
+                    placeholder="Password"
+                    value={inputs.password}
                     onChange={handleInput}
+                    disabled={loading}
+                    className={`w-full px-4 py-2 border ${
+                      errors.password.required
+                        ? "border-red-500"
+                        : "border-gray-300"
+                    } rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500`}
                   />
                   {errors.password.required && (
                     <span className="text-red-500 text-sm">
                       Password is required.
                     </span>
                   )}
+                  <div className="mt-2 text-right">
+                    <Link
+                      to="/forgot-password"
+                      className="text-blue-500 text-sm"
+                    >
+                      Forgot Password?
+                    </Link>
+                  </div>
                 </div>
+
                 <div className="mb-4">
                   {loading && (
                     <div className="text-center my-4">
                       <div className="animate-spin inline-block w-6 h-6 border-4 border-blue-500 border-t-transparent rounded-full"></div>
                     </div>
                   )}
-
                   {errors.custom_error && (
                     <div className="text-red-500 text-center">
                       <p>{errors.custom_error}</p>
                     </div>
                   )}
-
                   <input
                     type="submit"
-                    className="w-full bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg cursor-pointer"
                     value="Login"
                     disabled={loading}
+                    className="w-full bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg cursor-pointer"
                   />
                 </div>
 
                 <div className="text-center mt-4">
                   <p>
-                    Create new account? Please{" "}
+                    Create a new account? Please{" "}
                     <Link to="/register" className="text-blue-500">
                       Register
                     </Link>

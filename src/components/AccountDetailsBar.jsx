@@ -7,33 +7,18 @@ import MenuItem from "@mui/material/MenuItem";
 import Menu from "@mui/material/Menu";
 import { useState, useEffect } from "react";
 import { getUserDetails } from "../services/api"; // Adjust path as needed
-import { loginUserId } from "../services/Storage";
+import { Link } from "react-router-dom"; // Import Link from react-router-dom
+import { Button } from "@mui/material";
+import SettingsIcon from "./settingsIcon";
 
 export default function AccountDetailsBar({ drawerOpen }) {
   const [anchorEl, setAnchorEl] = React.useState(null);
-  const [userDetails, setUserDetails] = useState({ name: "", email: "" });
-  const [error, setError] = useState(null);
-    
-  const user_Id=loginUserId();
 
-  useEffect(() => {
-    const token = localStorage.getItem("token"); // Adjust according to your auth logic
-    if (token) {
-      getUserDetails(token)
-        .then((data) => {
-          if (data) {
-            setUserDetails({ name: data.name, email: data.email });
-          } else {
-            setError("Failed to fetch user details");
-          }
-        })
-        .catch((err) => {
-          setError("Error fetching user details", err);
-        });
-    } else {
-      setError("No token found");
-    }
-  }, []);
+
+
+  const [name, setName] = useState(" Mappy ");
+  // const [photo, setphoto] = useState(null); // State to store the selected photo
+  const [userId, setUserId] = useState(null); // State for user ID
 
   const handleMenu = (event) => {
     setAnchorEl(event.currentTarget);
@@ -42,6 +27,22 @@ export default function AccountDetailsBar({ drawerOpen }) {
   const handleClose = () => {
     setAnchorEl(null);
   };
+
+  // Fetch user details when the component mounts
+  useEffect(() => {
+    const fetchUserDetails = async () => {
+      try {
+        const response = await getUserDetails();
+        setName(response.data.user.name);
+        setUserId(response.data.user._id);
+        // setphoto(response.data.photo); // Set the photo URL if available
+      } catch (error) {
+        console.error("Error fetching user details:", error);
+      }
+    };
+
+    fetchUserDetails();
+  }, []);
 
   return (
     <Box sx={{ flexGrow: 1 }}>
@@ -71,16 +72,19 @@ export default function AccountDetailsBar({ drawerOpen }) {
           open={Boolean(anchorEl)}
           onClose={handleClose}
         >
-          <MenuItem onClick={handleClose}>My Profile</MenuItem>
-          {userDetails.name && userDetails.email ? (
-            <div>
-              <MenuItem disabled>Name: {userDetails.name}</MenuItem>
-              <MenuItem disabled>Email: {userDetails.email}</MenuItem>
-              <MenuItem disabled>Unique ID: {user_Id}</MenuItem>
+          {/* Link to /userInfo */}
+          <Link to="/userInfo" className="w-full">
+            <div className="flex justify-center items-center mb-4">
+              <Button color="secondary" variant="contained">
+                <MenuItem onClick={handleClose}>Update Profile   <SettingsIcon/></MenuItem>
+              </Button>
             </div>
-          ) : (
-            <MenuItem disabled>{error || "Loading..."}</MenuItem>
-          )}
+          </Link>
+
+          <div>
+            <MenuItem disabled>Name:{name}</MenuItem>
+            <MenuItem disabled>User ID:{userId}</MenuItem>
+          </div>
         </Menu>
       </div>
     </Box>

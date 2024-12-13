@@ -4,6 +4,9 @@ import Register from "./pages/Register";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Dashboard from "./pages/Dashboard";
 import MapComponent from "./components/MapComponent";
+import ForgotPassword from "./components/forgotPassword";
+import ResetPassword from "./components/resetPassword";
+import UserAccount from "./pages/UserInfo";
 
 export default function App() {
   return (
@@ -11,11 +14,14 @@ export default function App() {
       <BrowserRouter>
         <Routes>
           <Route path="/register" element={<Register />} />
-          <Route path="/dashboard" element={<Dashboard/>} />
+          <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/" element={<Landpage />} />
           <Route path="*" element={<h1>404 - Page Not Found</h1>} />
           <Route path="/login" element={<LoginPage />} />
-          <Route path="/Mappy" element={<MapComponent/>} />
+          <Route path="/Mappy" element={<MapComponent />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/resetPassword/:token" element={<ResetPassword />} />
+          <Route path="/userInfo" element={<UserAccount />} />
         </Routes>
       </BrowserRouter>
     </div>

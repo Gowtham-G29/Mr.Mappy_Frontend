@@ -9,7 +9,8 @@ import DialogTitle from "@mui/material/DialogTitle";
 import useMediaQuery from "@mui/material/useMediaQuery";
 import { useTheme } from "@mui/material/styles";
 import { List, ListItem, Card, CardContent, Typography } from "@mui/material";
-import { loginUserId } from "../services/Storage";
+import axios from "axios";
+import { getUserActivities } from "../services/api";
 
 export default function LogModal({
   visibleItems,
@@ -18,9 +19,8 @@ export default function LogModal({
   hangout,
   visiting,
   loadMoreItems,
-  loadDbdata,
+  closeLogmodel
 }) {
-  const userId = loginUserId();
   const theme = useTheme();
   const fullScreen = useMediaQuery(theme.breakpoints.down("md"));
 
@@ -35,86 +35,98 @@ export default function LogModal({
     setOpenDialogs((prev) => ({ ...prev, [activityId]: false }));
   };
 
-  const deleteActivity = (type, activityId) => {
-    fetch(
-      `http://localhost:5000/api/activities/${type}/${activityId}/${userId}`,
-      {
-        method: "DELETE",
-      }
-    )
-      .then((response) => response.json())
-      .then((data) => {
-        if (data.message === "Activity deleted successfully") {
-          loadDbdata(); // Refresh data after deletion
-        }
-      })
-      .catch((error) => console.error("Error deleting activity:", error));
+  const deleteActivity = async (activityId) => {
+    try {
+      // Send DELETE request to your API
+      await axios.delete(
+        `https://mr-mappy-backend-node.onrender.com/api/v1/activities/${activityId}`,
+        { withCredentials: true }
+      );
+      await getUserActivities();
+      loadMoreItems();
+    } catch (error) {
+      // Handle any error that occurred during the request
+      console.error("Error deleting activity:", error);
+      alert("Failed to delete activity. Please try again.");
+    }
   };
 
-  const renderActivity = (entry, type) => (
-    <ListItem key={entry.activity_id}>
+  const renderActivity = (entry) => (
+    <ListItem key={entry._id}>
       <Card className="bg-slate-300 shadow-md">
         <CardContent className="flex flex-col w-48 bg-blue-200">
           <Typography className="text-center" sx={{ fontWeight: "bold" }}>
-            {entry.type === "money_spending"
+            {entry.type === "Money spending"
               ? "Money Spending"
-              : entry.type === "hangout"
+              : entry.type === "Hangout"
               ? "Hangout"
-              : entry.type === "workout"
+              : entry.type === "Workout"
               ? "Workout"
-              : entry.type === "visiting"
+              : entry.type === "Visiting"
               ? "Visiting"
               : null}
           </Typography>
 
           <br />
           {/* Display details based on activity type */}
-          {type === "money_spending" && (
+          {entry.type === "Money spending" && (
             <div className="text-center">
               <Typography variant="subtitle2">
-                Amount 💸: {entry.amount}
+                Amount 💸: {entry.details?.amount || "N/A"}
               </Typography>
               <Typography variant="subtitle2">
-                Date: {new Date(entry.activity_time).toLocaleDateString()}
+                Date:{" "}
+                {entry.activityTime
+                  ? new Date(entry.activityTime).toLocaleDateString()
+                  : "N/A"}
                 <br />
               </Typography>
             </div>
           )}
-          {type === "workout" && (
+          {entry.type === "Workout" && (
             <div className="text-center">
               <Typography variant="subtitle2">
-                Type 🚴🏻‍♂️: {entry.workoutName}
+                Type 🚴🏻‍♂️: {entry.details?.workoutName || "N/A"}
               </Typography>
               <Typography variant="subtitle2">
-                Date: {new Date(entry.activity_time).toLocaleDateString()}
+                Date:{" "}
+                {entry.activityTime
+                  ? new Date(entry.activityTime).toLocaleDateString()
+                  : "N/A"}
                 <br />
               </Typography>
             </div>
           )}
-          {type === "hangout" && (
+          {entry.type === "Hangout" && (
             <div className="text-center">
               <Typography variant="subtitle2">
-                Location 📍: {entry.place}
+                Location 📍: {entry.details?.place || "N/A"}
               </Typography>
               <Typography variant="subtitle2">
-                Date: {new Date(entry.activity_time).toLocaleDateString()}
+                Date:{" "}
+                {entry.activityTime
+                  ? new Date(entry.activityTime).toLocaleDateString()
+                  : "N/A"}
                 <br />
               </Typography>
             </div>
           )}
-          {type === "visiting" && (
+          {entry.type === "Visiting" && (
             <div className="text-center">
               <Typography variant="subtitle2">
-                Place 🗺️: {entry.placeName}
+                Place 🗺️: {entry.details?.placeName || "N/A"}
               </Typography>
               <Typography variant="subtitle2">
-                Date: {new Date(entry.activity_time).toLocaleDateString()}
+                Date:{" "}
+                {entry.activityTime
+                  ? new Date(entry.activityTime).toLocaleDateString()
+                  : "N/A"}
               </Typography>
             </div>
           )}
           {/* Button to open dialog */}
           <Button
-            onClick={() => handleClickOpen(entry.activity_id)}
+            onClick={() => handleClickOpen(entry._id)}
             variant="contained"
           >
             View & Delete
@@ -125,8 +137,8 @@ export default function LogModal({
       {/* Separate dialog for each activity */}
       <Dialog
         fullScreen={fullScreen}
-        open={openDialogs[entry.activity_id] || false}
-        onClose={() => handleClose(entry.activity_id)}
+        open={openDialogs[entry._id] || false}
+        onClose={() => handleClose(entry._id)}
         aria-labelledby="responsive-dialog-title"
       >
         <DialogTitle id="responsive-dialog-title">
@@ -134,51 +146,80 @@ export default function LogModal({
         </DialogTitle>
         <DialogContent>
           <DialogContentText>
-            {type === "money_spending" && (
+            {entry.type === "Money spending" && (
               <>
-                Amount: {entry.amount} <br />
-                Spended For: {entry.investedFor} <br />
-                Date: {new Date(entry.activity_time).toLocaleDateString()}{" "}
+                Amount: {entry.details?.amount || "N/A"} <br />
+                Spended For: {entry.details?.investedFor || "N/A"} <br />
+                Date:{" "}
+                {entry.activityTime
+                  ? new Date(entry.activityTime).toLocaleDateString()
+                  : "N/A"}
                 <br />
-                Time: {new Date(entry.activity_time).toLocaleTimeString()}
+                Time:{" "}
+                {entry.activityTime
+                  ? new Date(entry.activityTime).toLocaleTimeString()
+                  : "N/A"}
                 <br />
-                Location Coordinates: {entry.lat} , {entry.lng}
+                Location Coordinates: {entry.details?.lat || "N/A"} ,{" "}
+                {entry.details?.lng || "N/A"}
               </>
             )}
-            {type === "workout" && (
+            {entry.type === "Workout" && (
               <>
-                Workout Name: {entry.workoutName} <br />
-                Duration: {entry.workoutDuration} minutes <br />
-                Calories Burned: {entry.caloriesBurned} <br />
-                Date: {new Date(entry.activity_time).toLocaleDateString()}{" "}
+                Workout Name: {entry.details?.workoutName || "N/A"} <br />
+                Duration: {entry.details?.workoutDuration || "N/A"} minutes{" "}
                 <br />
-                Time: {new Date(entry.activity_time).toLocaleTimeString()}
+                Calories Burned: {entry.details?.caloriesBurned || "N/A"} <br />
+                Date:{" "}
+                {entry.activityTime
+                  ? new Date(entry.activityTime).toLocaleDateString()
+                  : "N/A"}
                 <br />
-                Location Coordinates: {entry.lat} , {entry.lng}
+                Time:{" "}
+                {entry.activityTime
+                  ? new Date(entry.activityTime).toLocaleTimeString()
+                  : "N/A"}
+                <br />
+                Location Coordinates: {entry.details?.lat || "N/A"} ,{" "}
+                {entry.details?.lng || "N/A"}
               </>
             )}
-            {type === "hangout" && (
+            {entry.type === "Hangout" && (
               <>
-                Location: {entry.place} <br />
-                Duration: {entry.spendingDuration} <br />
-                Description: {entry.memorableMoments} <br />
-                Date: {new Date(entry.activity_time).toLocaleDateString()}{" "}
+                Location: {entry.details?.place || "N/A"} <br />
+                Duration: {entry.details?.spendingDuration || "N/A"} <br />
+                Description: {entry.details?.memorableMoments || "N/A"} <br />
+                Date:{" "}
+                {entry.activityTime
+                  ? new Date(entry.activityTime).toLocaleDateString()
+                  : "N/A"}
                 <br />
-                Time: {new Date(entry.activity_time).toLocaleTimeString()}
+                Time:{" "}
+                {entry.activityTime
+                  ? new Date(entry.activityTime).toLocaleTimeString()
+                  : "N/A"}
                 <br />
-                Location Coordinates: {entry.lat} , {entry.lng}
+                Location Coordinates: {entry.details?.lat || "N/A"} ,{" "}
+                {entry.details?.lng || "N/A"}
               </>
             )}
-            {type === "visiting" && (
+            {entry.type === "Visiting" && (
               <>
-                Visiting Place: {entry.placeName} <br />
-                Purpose: {entry.motive} <br />
-                Duration: {entry.spendingDuration} <br />
-                Date: {new Date(entry.activity_time).toLocaleDateString()}{" "}
+                Visiting Place: {entry.details?.placeName || "N/A"} <br />
+                Purpose: {entry.details?.motive || "N/A"} <br />
+                Duration: {entry.details?.spendingDuration || "N/A"} <br />
+                Date:{" "}
+                {entry.activityTime
+                  ? new Date(entry.activityTime).toLocaleDateString()
+                  : "N/A"}
                 <br />
-                Time: {new Date(entry.activity_time).toLocaleTimeString()}
+                Time:{" "}
+                {entry.activityTime
+                  ? new Date(entry.activityTime).toLocaleTimeString()
+                  : "N/A"}
                 <br />
-                Location Coordinates: {entry.lat} , {entry.lng}
+                Location Coordinates: {entry.details?.lat || "N/A"} ,{" "}
+                {entry.details?.lng || "N/A"}
               </>
             )}
             <br />
@@ -188,13 +229,14 @@ export default function LogModal({
           </DialogContentText>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => handleClose(entry.activity_id)} autoFocus>
+          <Button onClick={() => handleClose(entry._id)} autoFocus>
             Cancel
           </Button>
           <Button
             onClick={() => {
-              deleteActivity(type, entry.activity_id);
-              handleClose(entry.activity_id);
+              deleteActivity(entry._id);
+              handleClose(entry._id);
+              closeLogmodel();
             }}
             color="error"
           >
@@ -222,24 +264,25 @@ export default function LogModal({
         )}
 
         {/* Render Money Spending Section */}
+
         {moneySpending
           .slice(0, visibleItems)
-          .map((entry) => renderActivity(entry, "money_spending"))}
+          .map((entry) => renderActivity(entry))}
 
         {/* Render Workout Section */}
         {workout
           .slice(0, visibleItems)
-          .map((entry) => renderActivity(entry, "workout"))}
+          .map((entry) => renderActivity(entry))}
 
         {/* Render Hangout Section */}
         {hangout
           .slice(0, visibleItems)
-          .map((entry) => renderActivity(entry, "hangout"))}
+          .map((entry) => renderActivity(entry))}
 
         {/* Render Visiting Section */}
         {visiting
           .slice(0, visibleItems)
-          .map((entry) => renderActivity(entry, "visiting"))}
+          .map((entry) => renderActivity(entry))}
 
         {/* Load More Button */}
         <div className="text-center">

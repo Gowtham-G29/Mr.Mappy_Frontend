@@ -9,9 +9,10 @@ import Modal from "@mui/joy/Modal";
 import ModalDialog from "@mui/joy/ModalDialog";
 import WarningRoundedIcon from "@mui/icons-material/WarningRounded";
 import { useState, useEffect } from "react";
+import { logout } from "../services/Auth";
+import { useNavigate } from "react-router-dom";
 
 export default function AlertDialogModal({
-  logoutUser,
   logoutModelOpen,
   handleLogoutModelClose,
 }) {
@@ -19,18 +20,22 @@ export default function AlertDialogModal({
 
   // Synchronize `open` state with `logoutModelOpen` prop
   useEffect(() => {
-    if (logoutModelOpen) {
-      setOpen(true);
-    } else {
-      setOpen(false);
-    }
+    setOpen(logoutModelOpen);
   }, [logoutModelOpen]);
+
+  const navigate = useNavigate();
+
+  //logout
+  const logoutUser = () => {
+    logout();
+    navigate("/");
+  };
 
   return (
     <React.Fragment>
       <Modal
         open={open}
-        onClick={() => {
+        onClose={() => {
           setOpen(false);
           handleLogoutModelClose();
         }}
@@ -41,7 +46,7 @@ export default function AlertDialogModal({
             Confirmation
           </DialogTitle>
           <Divider />
-          <DialogContent>Are you sure want to Logout ?</DialogContent>
+          <DialogContent>Are you sure you want to Logout?</DialogContent>
           <DialogActions>
             <Button variant="solid" color="danger" onClick={logoutUser}>
               Logout

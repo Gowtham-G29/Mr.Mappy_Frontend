@@ -1,4 +1,3 @@
-import * as React from "react";
 import WhereToVoteIcon from "@mui/icons-material/WhereToVote";
 import { styled, useTheme } from "@mui/material/styles";
 import Box from "@mui/material/Box";
@@ -17,8 +16,8 @@ import { useState } from "react";
 
 import FloatingActionButtonExtendedSize from "./FloatingLogoutButton";
 import CurrentPosition from "./CurrentLocation";
-import { Navigate, useNavigate } from "react-router-dom";
-import { isAuthenticated, logout } from "../services/Auth";
+import { Navigate } from "react-router-dom";
+import { isAuthenticated } from "../services/Auth";
 
 import "leaflet/dist/leaflet.css";
 import { useEffect } from "react";
@@ -28,12 +27,10 @@ import ActionForm from "./ActionForm";
 import SideDrawerIcon from "./sideDrawerIcon";
 import AlertDialogModal from "./LogoutConfirmationModal";
 import axios from "axios";
-import { loginUserId } from "../services/Storage";
 import AccountDetailsBar from "./AccountDetailsBar";
 import LogModal from "./LogModal";
 
 const drawerWidth = 240;
-
 const openedMixin = (theme) => ({
   width: drawerWidth,
   transition: theme.transitions.create("width", {
@@ -101,21 +98,26 @@ const Drawer = styled(MuiDrawer, {
 
 export default function AppDrawer() {
   const theme = useTheme();
-  const [open, setOpen] = React.useState(false);
-  const [moneySpending, setMoneySpending] = useState({});
-  const [workout, setWorkout] = useState({});
-  const [hangout, setHangout] = useState({});
-  const [visiting, setVisiting] = useState({});
+
+  const [open, setOpen] = useState(false);
+
+  const [moneySpending, setMoneySpending] = useState([]); // Initialize as an empty array
+  const [workout, setWorkout] = useState([]); // Initialize as an empty array
+  const [hangout, setHangout] = useState([]); // Initialize as an empty array
+  const [visiting, setVisiting] = useState([]); // Initialize as an empty array
+
   const [visibleItems, setVisibleItems] = useState(5); // Initial number of visible items
   const [formVisible, setFormVisible] = useState(false);
 
   const [storedEntries, setStoredEntries] = useState([]);
   // const [currentLocation, setCurrentLocation] = useState(false); // need to check
   const [markerVisible, setMarkerVisible] = useState(false);
-  const navigate = useNavigate();
 
   const [navigateButton, setNavigateButton] = useState(false);
   const [logoutModelOpen, setLogoutModelOpen] = useState(false);
+
+  const [action, setAction] = useState("");
+  const [clickedCoords, setClickedCoords] = useState(null); // State to store coordinates
 
   const handleLogoutModelOpen = () => {
     setLogoutModelOpen(true);
@@ -125,59 +127,52 @@ export default function AppDrawer() {
     setLogoutModelOpen(false);
   };
 
-  //getting user id from the local storage
-  const User_Id = loginUserId();
-
-  //Read the data from the database
-
-  // Define the fetch function outside useEffect
-  const fetchActivities = async (userId) => {
+  const fetchActivities = async () => {
     try {
       const response = await axios.get(
-        `http://localhost:5000/api/activities/${userId}`
+        `https://mr-mappy-backend-node.onrender.com/api/v1/activities/getActivity`,
+        {
+          withCredentials: true,
+        }
       );
       if (response.status === 200) {
-        const entries = response.data;
-        setStoredEntries(entries);
+        const entries = response.data.activities;
+        // Check if entries is an array before attempting to filter
+        if (Array.isArray(entries)) {
+          setStoredEntries(entries);
+          const moneySpendingEntries = entries.filter(
+            (entry) => entry.type === "Money spending"
+          );
+          const workoutEntries = entries.filter(
+            (entry) => entry.type === "Workout"
+          );
+          const hangoutEntries = entries.filter(
+            (entry) => entry.type === "Hangout"
+          );
+          const visitingEntries = entries.filter(
+            (entry) => entry.type === "Visiting"
+          );
 
-        const moneySpendingEntries = entries.filter(
-          (entry) => entry.type === "money_spending"
-        );
-        const workoutEntries = entries.filter(
-          (entry) => entry.type === "workout"
-        );
-        const hangoutEntries = entries.filter(
-          (entry) => entry.type === "hangout"
-        );
-        const visitingEntries = entries.filter(
-          (entry) => entry.type === "visiting"
-        );
-
-        setMoneySpending(moneySpendingEntries);
-        setWorkout(workoutEntries);
-        setHangout(hangoutEntries);
-        setVisiting(visitingEntries);
-      } else {
-        throw response.data;
+          setMoneySpending(moneySpendingEntries);
+          setWorkout(workoutEntries);
+          setHangout(hangoutEntries);
+          setVisiting(visitingEntries);
+        } else {
+          console.error("Entries is not an array:", entries);
+        }
       }
     } catch (error) {
       console.error("Error fetching activities:", error);
     }
   };
-
   // Call fetchActivities inside useEffect when User_Id changes
   useEffect(() => {
-    if (User_Id) {
-      fetchActivities(User_Id);
-    }
-  }, [User_Id]);
+    fetchActivities();
+  }, []);
 
-  // Now you can call fetchActivities whenever needed
   //pass this to side drawer entry list.
   const refreshActivities = () => {
-    if (User_Id) {
-      fetchActivities(User_Id);
-    }
+    fetchActivities();
   };
 
   const handleDrawerOpen = () => {
@@ -191,9 +186,6 @@ export default function AppDrawer() {
     refreshActivities();
   };
 
-  const [action, setAction] = useState("");
-  const [clickedCoords, setClickedCoords] = useState(null); // State to store coordinates
-
   const handleAction = (e) => {
     setAction(e.target.value);
   };
@@ -205,26 +197,15 @@ export default function AppDrawer() {
     handleDrawerClose(); //if the map is clicked the deawer is closed
   };
 
-  //logout
-
-  const logoutUser = () => {
-    logout();
-    navigate("/");
-  };
-
-  if (!isAuthenticated()) {
-    return <Navigate to="/login" />;
-  }
-
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     const formData = new FormData(e.target);
     let newEntry = {};
 
     // Include coordinates in the form data
     if (clickedCoords) {
-      formData.append("latitude", `${clickedCoords.lat}`);
-      formData.append("longitude", `${clickedCoords.lng}`);
+      formData.append("lat", `${clickedCoords.lat}`);
+      formData.append("lng", `${clickedCoords.lng}`);
     }
 
     switch (action) {
@@ -267,40 +248,41 @@ export default function AppDrawer() {
         break;
     }
 
-    newEntry.lat = formData.get("latitude");
-    newEntry.lng = formData.get("longitude");
+    newEntry.lat = Number(formData.get("lat"));
+    newEntry.lng = Number(formData.get("lng"));
 
-    fetch("http://localhost:5000/api/activities", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        ...newEntry,
-        userId: User_Id, // Get this from your authentication method
-      }),
-    })
-      .then((response) => {
-        if (!response.ok) {
-          throw new Error("Network response was not ok");
-        }
-        return response.json();
-      })
-      .then((data) => {
-        console.log("Success:", data);
-        setMarkerVisible(true); // Add marker to the map
-        e.target.reset();
-        setAction("");
-        setFormVisible(false); // Close form after submission
-      })
-      .catch((error) => {
-        console.error("Error:", error);
-      });
+
+    try {
+      await axios.post(
+        "https://mr-mappy-backend-node.onrender.com/api/v1/activities/newActivity",
+        {
+          ...newEntry,
+        },
+        { withCredentials: true }
+      );
+
+      // Update the UI
+      setMarkerVisible(true); // Add marker to the map
+      e.target.reset(); // Reset the form
+      setAction("");
+      setFormVisible(false); // Close the form
+    } catch (error) {
+      // Handle errors
+      if (error.response) {
+        // Server responded with a status outside the range of 2xx
+        console.error("Response error:", error.response.data);
+      } else if (error.request) {
+        // No response received from the server
+        console.error("Request error:", error.request);
+      } else {
+        // Something else caused the error
+        console.error("Unexpected error:", error.message);
+      }
+    }
   };
 
   const handleFormSubmit = (e) => {
     e.preventDefault();
-    // Handle form submission logic
     setFormVisible(false); // Hide form after submission
   };
 
@@ -312,6 +294,10 @@ export default function AppDrawer() {
   const handleCancel = () => {
     setFormVisible(false);
   };
+
+  if (!isAuthenticated()) {
+    return <Navigate to="/login" />;
+  }
 
   return (
     <Box sx={{ display: "flex" }} className="overflow-hidden">
@@ -344,6 +330,7 @@ export default function AppDrawer() {
           </div>
         </Toolbar>
       </AppBar>
+
       <Drawer variant="permanent" open={open}>
         <DrawerHeader className="bg-gradient-to-l from-sky-500 to-indigo-500 ">
           <Typography variant="h5" className="text-slate-200 ">
@@ -373,18 +360,8 @@ export default function AppDrawer() {
               hangout={hangout}
               visiting={visiting}
               loadMoreItems={loadMoreItems} // Pass the function here
-              loadDbdata={refreshActivities}
-
+              closeLogmodel={handleDrawerClose}
             />
-            {/* <EntryList
-              visibleItems={visibleItems}
-              moneySpending={moneySpending}
-              workout={workout}
-              hangout={hangout}
-              visiting={visiting}
-              loadMoreItems={loadMoreItems} // Pass the function here
-              loadDbdata={refreshActivities}
-            /> */}
           </div>
         ) : (
           <SideDrawerIcon handleDrawerOpen={handleDrawerOpen} />
@@ -415,6 +392,7 @@ export default function AppDrawer() {
           }}
         >
           {/* Full-screen map */}
+
           <MapComponent
             style={{ width: "100%", height: "100%" }}
             handleMapClick={handleMapClick}
@@ -457,7 +435,6 @@ export default function AppDrawer() {
 
       <AlertDialogModal
         logoutModelOpen={logoutModelOpen}
-        logoutUser={logoutUser}
         handleLogoutModelClose={handleLogoutModelClose}
       />
 

@@ -13,15 +13,14 @@ import L from "leaflet";
 
 // Custom icon
 const customIcon = new L.Icon({
-  iconUrl:
-    "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png",
-  iconSize: [25, 41],
+  iconUrl: "src/assets/flag.png",
+  iconSize: [50, 50],
   iconAnchor: [12, 41],
 });
 
 // icon for current location
 const customIcon2 = new L.Icon({
-  iconUrl: "https://img.icons8.com/?size=100&id=13800&format=png&color=000000",
+  iconUrl: "src/assets/location.png",
   iconSize: [30, 50],
   iconAnchor: [12, 41], // need to identify what is this
 });
@@ -64,7 +63,6 @@ const MapComponent = ({
   }, []);
 
   // Method to focus on current position
-
   const focusCurrentPosition = useCallback(() => {
     if (mapRef.current && currentPosition) {
       mapRef.current.setView(currentPosition, 15); // Focus on current position
@@ -80,7 +78,6 @@ const MapComponent = ({
   useEffect(() => {
     if (navigateButton) {
       focusCurrentPosition();
-      // Optionally reset the navigation button state after focusing
       setNavigateButton(false);
     }
   }, [focusCurrentPosition, navigateButton, setNavigateButton]);
@@ -90,8 +87,7 @@ const MapComponent = ({
     mapRef.current = map; // Store map instance in the ref
     useMapEvents({
       click(e) {
-        handleMapClick(e.latlng); // Send the coordinates back to the parent component
-
+        handleMapClick(e.latlng);
         setMarkers((prevMarkers) => [
           ...prevMarkers,
           {
@@ -120,13 +116,8 @@ const MapComponent = ({
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
-
         {markers.map((marker, index) => (
-          <Marker
-            key={index}
-            position={[...currentPosition]}
-            icon={customIcon2}
-          >
+          <Marker key={index} position={marker.geocode} icon={customIcon2}>
             <div>
               <Popup>{marker.popUp}</Popup>
             </div>
@@ -134,7 +125,6 @@ const MapComponent = ({
         ))}
 
         {/* submitted markers */}
-
         {markerVisible &&
           markers.map((marker, index) => (
             <Marker key={index} position={marker.geocode} icon={customIcon}>
@@ -143,21 +133,24 @@ const MapComponent = ({
               </div>
             </Marker>
           ))}
-        {/* Previous stored markers */}
-        {storedMarker.map((marker, index) => (
-          <Marker
-            key={index}
-            position={[marker.lat, marker.lng]}
-            icon={customIcon}
-          >
-            <Popup>
-              {marker.type}{" on "}
-              {new Date(marker.activity_time).toLocaleDateString()}{" || "}
-              {new Date(marker.activity_time).toLocaleTimeString()}
-            </Popup>
-          </Marker>
-        ))}
 
+        {/* Previous stored markers */}
+        {storedMarker.map((marker, index) => {
+          return (
+            <Marker
+              key={index}
+              position={[marker.details.lat, marker.details.lng]}
+              icon={customIcon}
+            >
+              <Popup>
+                {marker.type} {" on "}
+                {new Date(marker.activityTime).toLocaleDateString("en-US")}{" "}
+                {" || "}
+                {new Date(marker.activityTime).toLocaleTimeString("en-US")}
+              </Popup>
+            </Marker>
+          );
+        })}
         <MapClickHandler />
       </MapContainer>
     </div>

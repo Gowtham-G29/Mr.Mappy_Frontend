@@ -10,7 +10,6 @@ export default function DeleteButton() {
           <ChipDelete
             color="danger"
             variant="plain"
-            // onClick={() => alert('You clicked the delete button!')}
           >
             <DeleteForever />
           </ChipDelete>
