@@ -6,7 +6,7 @@ import AccountCircle from "@mui/icons-material/AccountCircle";
 import MenuItem from "@mui/material/MenuItem";
 import Menu from "@mui/material/Menu";
 import { useState, useEffect } from "react";
-import { getUserDetails } from "../services/api"; // Adjust path as needed
+import { getUserDetails } from "../services/Api"; // Adjust path as needed
 import { Link } from "react-router-dom"; // Import Link from react-router-dom
 import { Button } from "@mui/material";
 import SettingsIcon from "./settingsIcon";

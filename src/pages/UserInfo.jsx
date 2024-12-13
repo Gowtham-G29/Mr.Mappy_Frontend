@@ -7,7 +7,7 @@ import {
   getUserActivities,
   getUserDetails,
   updateCurrentUserPassword,
-} from "../services/api";
+} from "../services/Api";
 import { logout } from "../services/Auth";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";

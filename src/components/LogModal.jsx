@@ -10,7 +10,7 @@ import useMediaQuery from "@mui/material/useMediaQuery";
 import { useTheme } from "@mui/material/styles";
 import { List, ListItem, Card, CardContent, Typography } from "@mui/material";
 import axios from "axios";
-import { getUserActivities } from "../services/api";
+import { getUserActivities } from "../services/Api";
 
 export default function LogModal({
   visibleItems,

@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import NavBar from "../components/NavBar";
 import Footer from "../components/Footer";
-import { forgotPassword } from "../services/api";
+import { forgotPassword } from "../services/Api";
 
 function ForgotPassword() {
   const [emailSent, setEmailSent] = useState(false); // State to track if email is sent
