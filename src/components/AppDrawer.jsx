@@ -22,7 +22,6 @@ import "leaflet/dist/leaflet.css";
 import { useEffect } from "react";
 import MapComponent from "./MapComponent";
 import ActionForm from "./ActionForm";
-// import EntryList from "./EntryList";
 import SideDrawerIcon from "./SideDrawerIcon";
 import AlertDialogModal from "./LogoutConfirmationModal";
 import axios from "axios";

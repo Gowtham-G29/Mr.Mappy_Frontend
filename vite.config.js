@@ -9,6 +9,9 @@ export default defineConfig({
     alias: {
       '@services': '/src/services'
     }
-  }
+  },
+  build: {
+    outDir: 'dist', // This should point to the correct directory
+  },
 })
 
